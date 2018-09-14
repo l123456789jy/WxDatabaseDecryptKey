@@ -103,7 +103,7 @@ public class DecryptUtiles {
    * 微信的uid存储在SharedPreferences里面
    * 存储位置\data\data\com.tencent.mm\shared_prefs\auth_info_key_prefs.xml
    */
-  private static String initCurrWxUin() {
+  public static String initCurrWxUin() {
     String   mCurrWxUin = null;
     File file = new File(WX_SP_UIN_PATH);
     try {

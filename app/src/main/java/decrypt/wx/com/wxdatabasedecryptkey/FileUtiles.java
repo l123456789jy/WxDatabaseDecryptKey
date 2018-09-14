@@ -67,7 +67,7 @@ public class FileUtiles {
   /**
    * 连接数据库
    */
-  private static void openWxDb(File dbFile, Context mContext, String mDbPassword) {
+  public static void openWxDb(File dbFile, Context mContext, String mDbPassword) {
     SQLiteDatabase.loadLibs(mContext);
     SQLiteDatabaseHook hook = new SQLiteDatabaseHook() {
       @Override

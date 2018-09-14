@@ -3,6 +3,7 @@ package decrypt.wx.com.wxdatabasedecryptkey;
 import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import java.io.File;
 
 public class MainActivity extends AppCompatActivity {
@@ -27,12 +28,23 @@ public class MainActivity extends AppCompatActivity {
     //获取root权限
     DecryptUtiles.execRootCmd("chmod 777 -R " + copyFilePath);
     String password = DecryptUtiles.initDbPassword(this);
+    String uid = DecryptUtiles.initCurrWxUin();
     //获取微信目录下的数据库文件
-    File wxDataDir = new File(WX_DB_DIR_PATH);
-    FileUtiles.searchFile(wxDataDir, WX_DB_FILE_NAME);
-    FileUtiles.open(mCurrApkPath,COPY_WX_DATA_DB,this,password);
+//    File wxDataDir = new File(WX_DB_DIR_PATH);
+//    FileUtiles.searchFile(wxDataDir, WX_DB_FILE_NAME);
+    //早期版本使用这种方式，撞库，判断哪个是当前用户的db
+     //FileUtiles.open(mCurrApkPath,COPY_WX_DATA_DB,this,password);
 
-
+     // MD5("mm"+auth_info_key_prefs.xml中解析出微信的uin码)得到db父目录
+    try {
+      String path = WX_DB_DIR_PATH +"/"+ Md5Utils.md5Encode("mm" + uid) + "/" + WX_DB_FILE_NAME;
+      Log.e("onCreate",path);
+      File wxDataDir = new File(path);
+      FileUtiles.openWxDb(wxDataDir,this,password);
+    } catch (Exception e) {
+      Log.e("onCreate",e.getMessage());
+      e.printStackTrace();
+    }
 
 
   }
