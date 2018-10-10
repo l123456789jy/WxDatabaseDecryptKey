@@ -6,6 +6,11 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import java.io.File;
 
+/**
+ *微信语音消息，图片，视频，收藏的语音，图片视频都是存放在本地，对应而本地的路径规则是
+ *  Environment.getExternalStorageDirectory().getPath() + "/"+tencent/MicroMsg/+ Md5Utils.md5Encode("mm" + uid)
+ *  这个是当前用户的所有资料，都可以打包，详细情况请看下面博客地址
+ */
 public class MainActivity extends AppCompatActivity {
   public static final String WX_ROOT_PATH = "/data/data/com.tencent.mm/";
   private static final String WX_DB_DIR_PATH = WX_ROOT_PATH + "MicroMsg";
@@ -38,7 +43,8 @@ public class MainActivity extends AppCompatActivity {
      // MD5("mm"+auth_info_key_prefs.xml中解析出微信的uin码)得到db父目录
     try {
       String path = WX_DB_DIR_PATH +"/"+ Md5Utils.md5Encode("mm" + uid) + "/" + WX_DB_FILE_NAME;
-      Log.e("onCreate",path);
+      Log.e("path",copyFilePath);
+      Log.e("path",path);
       File wxDataDir = new File(path);
       FileUtiles.openWxDb(wxDataDir,this,password);
     } catch (Exception e) {
