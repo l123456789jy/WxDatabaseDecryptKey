@@ -34,21 +34,19 @@ public class MainActivity extends AppCompatActivity {
     DecryptUtiles.execRootCmd("chmod 777 -R " + copyFilePath);
     String password = DecryptUtiles.initDbPassword(this);
     String uid = DecryptUtiles.initCurrWxUin();
-    //获取微信目录下的数据库文件
-//    File wxDataDir = new File(WX_DB_DIR_PATH);
-//    FileUtiles.searchFile(wxDataDir, WX_DB_FILE_NAME);
-    //早期版本使用这种方式，撞库，判断哪个是当前用户的db
-     //FileUtiles.open(mCurrApkPath,COPY_WX_DATA_DB,this,password);
-
-     // MD5("mm"+auth_info_key_prefs.xml中解析出微信的uin码)得到db父目录
     try {
       String path = WX_DB_DIR_PATH +"/"+ Md5Utils.md5Encode("mm" + uid) + "/" + WX_DB_FILE_NAME;
       Log.e("path",copyFilePath);
       Log.e("path",path);
+      Log.e("path",password);
+      //微信原始数据库的地址
       File wxDataDir = new File(path);
-      FileUtiles.openWxDb(wxDataDir,this,password);
+      //将微信数据库拷贝出来，因为直接连接微信的db，会导致微信崩溃
+      FileUtiles.copyFile(wxDataDir.getAbsolutePath(), copyFilePath);
+      //将微信数据库导出到sd卡操作sd卡上数据库
+      FileUtiles.openWxDb(new File(copyFilePath),this,password);
     } catch (Exception e) {
-      Log.e("onCreate",e.getMessage());
+      Log.e("path",e.getMessage());
       e.printStackTrace();
     }
 

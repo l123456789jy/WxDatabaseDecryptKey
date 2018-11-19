@@ -2,6 +2,9 @@ package decrypt.wx.com.wxdatabasedecryptkey;
 
 import android.content.Context;
 import android.util.Log;
+import android.widget.Toast;
+import com.threekilogram.objectbus.bus.ObjectBus;
+import com.threekilogram.objectbus.runnable.Executable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -25,6 +28,7 @@ import net.sqlcipher.database.SQLiteDatabaseHook;
 public class FileUtiles {
 
   private static List<File> mWxDbPathList = new ArrayList<>();
+  private static final ObjectBus task = com.threekilogram.objectbus.bus.ObjectBus.newList();
 
   /**
    * 递归查询微信本地数据库文件
@@ -47,27 +51,10 @@ public class FileUtiles {
     }
   }
 
-
-  public static void open(String mCurrApkPath, String COPY_WX_DATA_DB, Context mContext,
-      String mDbPassword) {
-    //处理多账号登陆情况
-    for (int i = 0; i < mWxDbPathList.size(); i++) {
-      File file = mWxDbPathList.get(i);
-      String copyFilePath = mCurrApkPath + COPY_WX_DATA_DB;
-      Log.e("copyFilePath","copyFilePath==="+copyFilePath);
-      //将微信数据库拷贝出来，因为直接连接微信的db，会导致微信崩溃
-      copyFile(file.getAbsolutePath(), copyFilePath);
-      File copyWxDataDb = new File(copyFilePath);
-      openWxDb(copyWxDataDb, mContext, mDbPassword);
-    }
-
-  }
-
-
   /**
    * 连接数据库
    */
-  public static void openWxDb(File dbFile, Context mContext, String mDbPassword) {
+  public static void openWxDb(File dbFile, final Context mContext, String mDbPassword) {
     SQLiteDatabase.loadLibs(mContext);
     SQLiteDatabaseHook hook = new SQLiteDatabaseHook() {
       @Override
@@ -79,29 +66,51 @@ public class FileUtiles {
         database.rawExecSQL("PRAGMA cipher_migrate;");
       }
     };
+    //打开数据库连接
+    final SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(dbFile, mDbPassword, null, hook);
+    runRecontact(mContext, db);
+  }
 
+  /**
+   * 微信好友信息
+   * @param mContext
+   * @param db
+   */
+  private static void runRecontact(final Context mContext, final SQLiteDatabase db) {
+    task.toPool(new Runnable() {
+      @Override public void run() {
+        getRecontactDate(db);
+      }
+    }).toMain(new Runnable() {
+      @Override public void run() {
+        Toast.makeText(mContext, "查询通讯录完毕", Toast.LENGTH_LONG).show();
+      }
+    }).run();
+  }
+
+  /**
+   * 获取当前用户的微信所有联系人
+   */
+  private static void getRecontactDate(SQLiteDatabase db) {
+    Cursor c1 = null;
     try {
-      //打开数据库连接
-      SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(dbFile, mDbPassword, null, hook);
       //查询所有联系人（verifyFlag!=0:公众号等类型，群里面非好友的类型为4，未知类型2）
-      Cursor c1 = db.rawQuery(
-          "select * from rcontact where verifyFlag = 0 and type != 4 and type != 2 and nickname != '' limit 20, 9999",
+      c1 = db.rawQuery(
+          "select * from rcontact where verifyFlag = 0 and type != 4 and type != 2 and nickname != ''",
           null);
       while (c1.moveToNext()) {
         String userName = c1.getString(c1.getColumnIndex("username"));
-        String alias = c1.getString(c1.getColumnIndex("alias"));
         String nickName = c1.getString(c1.getColumnIndex("nickname"));
-        Log.e("openWxDb", "userName====" + userName);
-        Log.e("openWxDb", "alias====" + alias);
-        Log.e("openWxDb", "nickName=====" + nickName);
+        Log.e("openWxDb", "userName====" + userName + "    nickName=====" + nickName);
       }
       c1.close();
       db.close();
     } catch (Exception e) {
+      c1.close();
+      db.close();
       Log.e("openWxDb", "读取数据库信息失败" + e.toString());
     }
   }
-
 
   /**
    * 复制单个文件
@@ -124,11 +133,8 @@ public class FileUtiles {
         inStream.close();
       }
     } catch (Exception e) {
-      System.out.println("复制单个文件操作出错");
+      Log.e("copyFile", "复制单个文件操作出错");
       e.printStackTrace();
-
     }
   }
-
-
 }
