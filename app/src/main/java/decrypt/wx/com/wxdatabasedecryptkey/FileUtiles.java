@@ -29,7 +29,7 @@ public class FileUtiles {
 
   private static List<File> mWxDbPathList = new ArrayList<>();
   private static final ObjectBus task = com.threekilogram.objectbus.bus.ObjectBus.newList();
-
+  private static SQLiteDatabaseHook hook;
   /**
    * 递归查询微信本地数据库文件
    *
@@ -56,7 +56,7 @@ public class FileUtiles {
    */
   public static void openWxDb(File dbFile, final Context mContext, String mDbPassword) {
     SQLiteDatabase.loadLibs(mContext);
-    SQLiteDatabaseHook hook = new SQLiteDatabaseHook() {
+     hook = new SQLiteDatabaseHook() {
       @Override
       public void preKey(SQLiteDatabase database) {
       }
@@ -67,8 +67,81 @@ public class FileUtiles {
       }
     };
     //打开数据库连接
-    final SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(dbFile, mDbPassword, null, hook);
+    SQLiteDatabase db = SQLiteDatabase.openOrCreateDatabase(dbFile, mDbPassword, null, hook);
     runRecontact(mContext, db);
+
+  }
+
+  private static void runMessage(final Context mContext, final SQLiteDatabase db) {
+    task.toPool(new Runnable() {
+      @Override public void run() {
+        getMessageDate(db);
+      }
+    }).toMain(new Runnable() {
+      @Override public void run() {
+        Toast.makeText(mContext, "聊天信息查询完毕", Toast.LENGTH_LONG).show();
+        runChatRoom(mContext,db);
+      }
+    }).run();
+  }
+
+  /**
+   * 获取群聊成员列表
+   * @param mContext
+   * @param db
+   */
+  private static void runChatRoom(Context mContext, SQLiteDatabase db) {
+       getChatRoomDate(mContext,db);
+  }
+
+  /**
+   * 获取群聊成员列表
+   * @param mContext
+   * @param db
+   */
+  private static void getChatRoomDate(Context mContext, SQLiteDatabase db) {
+    Cursor c1 = null;
+    try {
+      c1 = db.rawQuery("select * from chatroom ", null);
+      Log.e("openWxDb", "群组信息记录分割线=====================================================================================");
+      while (c1.moveToNext()) {
+        String roomowner = c1.getString(c1.getColumnIndex("roomowner"));
+        String chatroomname = c1.getString(c1.getColumnIndex("chatroomname"));
+        String memberlist = c1.getString(c1.getColumnIndex("memberlist"));
+        Log.e("openWxDb", "群主====" + roomowner + "    群组成员id=====" + memberlist+ "    群id=====" + chatroomname);
+      }
+      c1.close();
+      db.close();
+    } catch (Exception e) {
+      c1.close();
+      db.close();
+      Log.e("openWxDb", "读取数据库信息失败" + e.toString());
+    }
+  }
+
+  /**
+   * 查询聊天信息
+   *  这里查出的聊天信息包含用户主动删除的信息
+   *  无心的聊天信息删除不是物理删除，所哟只要不卸载仍然可以查到聊天记录
+   * @param db
+   */
+  private static void getMessageDate(SQLiteDatabase db) {
+    Cursor c1 = null;
+    try {
+      //这里只查询文本消息，type=1  图片消息是47，具体信息可以自己测试  http://emoji.qpic.cn/wx_emoji/gV159fHh6rYfCMejCAU1wIoP6eywxFMYjaJiaBzPbSjoc6XlTLoMyKQEh4nswfrX5/ （发送表情连接可以拼接的）
+      c1 = db.rawQuery("select * from message where type = 1 ", null);
+      Log.e("openWxDb", "聊天记录分割线=====================================================================================");
+      while (c1.moveToNext()) {
+        String talker = c1.getString(c1.getColumnIndex("talker"));
+        String content = c1.getString(c1.getColumnIndex("content"));
+        String createTime = c1.getString(c1.getColumnIndex("createTime"));
+        Log.e("openWxDb", "聊天对象微信号====" + talker + "    内容=====" + content+ "    时间=====" + createTime);
+      }
+      c1.close();
+    } catch (Exception e) {
+      c1.close();
+      Log.e("openWxDb", "读取数据库信息失败" + e.toString());
+    }
   }
 
   /**
@@ -84,6 +157,7 @@ public class FileUtiles {
     }).toMain(new Runnable() {
       @Override public void run() {
         Toast.makeText(mContext, "查询通讯录完毕", Toast.LENGTH_LONG).show();
+        runMessage(mContext, db);
       }
     }).run();
   }
@@ -104,10 +178,8 @@ public class FileUtiles {
         Log.e("openWxDb", "userName====" + userName + "    nickName=====" + nickName);
       }
       c1.close();
-      db.close();
     } catch (Exception e) {
       c1.close();
-      db.close();
       Log.e("openWxDb", "读取数据库信息失败" + e.toString());
     }
   }

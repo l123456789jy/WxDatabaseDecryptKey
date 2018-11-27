@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import com.threekilogram.objectbus.bus.ObjectBus;
 import java.io.File;
 
 /**
@@ -28,28 +29,31 @@ public class MainActivity extends AppCompatActivity {
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_main);
-   //获取root权限
-    DecryptUtiles.execRootCmd("chmod 777 -R " + WX_ROOT_PATH);
-    //获取root权限
-    DecryptUtiles.execRootCmd("chmod 777 -R " + copyFilePath);
-    String password = DecryptUtiles.initDbPassword(this);
-    String uid = DecryptUtiles.initCurrWxUin();
-    try {
-      String path = WX_DB_DIR_PATH +"/"+ Md5Utils.md5Encode("mm" + uid) + "/" + WX_DB_FILE_NAME;
-      Log.e("path",copyFilePath);
-      Log.e("path",path);
-      Log.e("path",password);
-      //微信原始数据库的地址
-      File wxDataDir = new File(path);
-      //将微信数据库拷贝出来，因为直接连接微信的db，会导致微信崩溃
-      FileUtiles.copyFile(wxDataDir.getAbsolutePath(), copyFilePath);
-      //将微信数据库导出到sd卡操作sd卡上数据库
-      FileUtiles.openWxDb(new File(copyFilePath),this,password);
-    } catch (Exception e) {
-      Log.e("path",e.getMessage());
-      e.printStackTrace();
-    }
-
+    ObjectBus.newList().toPool(new Runnable() {
+      @Override public void run() {
+        //获取root权限
+        DecryptUtiles.execRootCmd("chmod 777 -R " + WX_ROOT_PATH);
+        //获取root权限
+        DecryptUtiles.execRootCmd("chmod 777 -R " + copyFilePath);
+        String password = DecryptUtiles.initDbPassword(MainActivity.this);
+        String uid = DecryptUtiles.initCurrWxUin();
+        try {
+          String path = WX_DB_DIR_PATH +"/"+ Md5Utils.md5Encode("mm" + uid) + "/" + WX_DB_FILE_NAME;
+          Log.e("path",copyFilePath);
+          Log.e("path",path);
+          Log.e("path",password);
+          //微信原始数据库的地址
+          File wxDataDir = new File(path);
+          //将微信数据库拷贝出来，因为直接连接微信的db，会导致微信崩溃
+          FileUtiles.copyFile(wxDataDir.getAbsolutePath(), copyFilePath);
+          //将微信数据库导出到sd卡操作sd卡上数据库
+          FileUtiles.openWxDb(new File(copyFilePath),MainActivity.this,password);
+        } catch (Exception e) {
+          Log.e("path",e.getMessage());
+          e.printStackTrace();
+        }
+      }
+    }).run();
 
   }
 }
